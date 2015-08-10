@@ -316,7 +316,8 @@ object ActorModel {
           currentTopicIdentity.config,
           currentTopicIdentity.deleteSupported,
           currentTopicIdentity.clusterConfig,
-          currentTopicIdentity.metrics)
+          currentTopicIdentity.metrics
+        )
       }
     }
   }
@@ -339,7 +340,8 @@ object ActorModel {
         o.failedFetchRequestsPerSec + failedFetchRequestsPerSec,
         o.failedProduceRequestsPerSec + failedProduceRequestsPerSec,
         o.messagesInPerSec + messagesInPerSec,
-        oSystemMetrics)
+        oSystemMetrics
+      )
     }
 
   }
