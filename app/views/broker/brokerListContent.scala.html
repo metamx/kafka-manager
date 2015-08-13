@@ -7,7 +7,7 @@
 
             <table class="table">
                 <thead>
-                <tr><td>Id</td><td>Host</td><td>Port</td><td>JMX Port</td><td>Bytes In</td><td>Bytes Out</td></tr>
+                <tr><td>Id</td><td>Host</td><td>Port</td><td>JMX Port</td><td>Bytes In</td><td>Bytes Out</td><td>Size</td></tr>
                 </thead>
                 <tbody>
                 @for(broker <- brokerListExtended.list) {
@@ -24,6 +24,11 @@
                     <td>
                         <span class="badge">
                             @brokerListExtended.metrics.get(broker.id).map(_.bytesOutPerSec.formatOneMinuteRate)
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge">
+                            @brokerListExtended.metrics.get(broker.id).map(_.size.formatSize)
                         </span>
                     </td>
                 </tr>

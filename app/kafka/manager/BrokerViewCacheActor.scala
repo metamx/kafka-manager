@@ -218,7 +218,9 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     }
   }
 
-  private def updateTopicMetrics(brokerList: BrokerList, topicPartitionByBroker: Map[Int, IndexedSeq[(TopicIdentity, Int, IndexedSeq[Int])]])(implicit ec: ExecutionContext): Unit = {
+  private def updateTopicMetrics(brokerList: BrokerList,
+                                 topicPartitionByBroker: Map[Int, IndexedSeq[(TopicIdentity, Int, IndexedSeq[Int])]]
+                                )(implicit ec: ExecutionContext): Unit = {
     val brokerLookup = brokerList.list.map(bi => bi.id -> bi).toMap
     topicPartitionByBroker.foreach {
       case (brokerId, topicPartitions) =>
@@ -244,7 +246,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                     }
                   case scala.util.Success(bm) => bm
                 }
-                self.tell(BVUpdateTopicMetricsForBroker(broker.id,result), ActorRef.noSender)
+                self.tell(BVUpdateTopicMetricsForBroker(broker.id, result), ActorRef.noSender)
               }
             }
         }
@@ -267,14 +269,9 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                 BrokerMetrics.DEFAULT
               case scala.util.Success(bm) => bm
             }
-            self.tell(BVUpdateBrokerMetrics(broker.id,result), ActorRef.noSender)
+            self.tell(BVUpdateBrokerMetrics(broker.id, result), ActorRef.noSender)
           }
         }
     }
   }
-
-  private def updateSegmentMetrics(brokerList: BrokerList)(implicit ec: ExecutionContext): Unit = {
-
-  }
-
 }

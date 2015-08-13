@@ -38,7 +38,8 @@ object ActorModel {
   case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterConfig: ClusterConfig,
+  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]],
+                    clusterConfig: ClusterConfig,
                     metrics: Option[BrokerMetrics] = None,
                     messagesPerSecCountHistory: Option[Queue[BrokerMessagesPerSecCount]] = None,
                     stats: Option[BrokerClusterStats] = None) extends QueryResponse {
@@ -331,7 +332,8 @@ object ActorModel {
                            failedFetchRequestsPerSec: MeterMetric,
                            failedProduceRequestsPerSec: MeterMetric,
                            messagesInPerSec: MeterMetric,
-                           oSystemMetrics: OSMetric) {
+                           oSystemMetrics: OSMetric,
+                           size: SegmentsMetric) {
     def +(o: BrokerMetrics) : BrokerMetrics = {
       BrokerMetrics(
         o.bytesInPerSec + bytesInPerSec,
@@ -340,7 +342,8 @@ object ActorModel {
         o.failedFetchRequestsPerSec + failedFetchRequestsPerSec,
         o.failedProduceRequestsPerSec + failedProduceRequestsPerSec,
         o.messagesInPerSec + messagesInPerSec,
-        oSystemMetrics
+        oSystemMetrics,
+        o.size + size
       )
     }
 
@@ -354,7 +357,10 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
-      OSMetric(0D, 0D))
+      OSMetric(0D, 0D),
+      SegmentsMetric(0L)
+    )
+
   }
   
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
