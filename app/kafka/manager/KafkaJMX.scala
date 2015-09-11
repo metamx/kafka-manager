@@ -241,7 +241,7 @@ object KafkaMetrics {
     }
   }
 
-  private def getLogSegmentsInfo(mbsc: MBeanServerConnection) = {
+  def getLogSegmentsInfo(mbsc: MBeanServerConnection) = {
     val logSegmentsMap = {
       queryValues(
         mbsc,
@@ -288,18 +288,14 @@ object KafkaMetrics {
       KafkaMetrics.getFailedProduceRequestsPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getMessagesInPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getOSMetric(mbsc),
-      KafkaMetrics.getSegmentsMetric(mbsc, topic)
+      KafkaMetrics.getSegmentsMetric(mbsc)
     )
   }
 
-  def getSegmentsMetric(mbsc: MBeanServerConnection, topic: Option[String] = None) : SegmentsMetric = {
+  // always contains the total bytes size a broker has
+  def getSegmentsMetric(mbsc: MBeanServerConnection) : SegmentsMetric = {
     val segmentsInfo = getLogSegmentsInfo(mbsc)
-    topic match {
-      case None =>
-        SegmentsMetric(segmentsInfo.values.map(_.values.map(_.bytes).sum).sum)
-      case Some(t) =>
-        SegmentsMetric(segmentsInfo.getOrElse(t,Map.empty).values.map(_.bytes).sum)
-    }
+    SegmentsMetric(segmentsInfo.values.map(_.values.map(_.bytes).sum).sum)
   }
 }
 

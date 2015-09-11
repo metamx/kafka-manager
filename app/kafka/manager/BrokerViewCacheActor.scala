@@ -48,6 +48,10 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   private[this] val topicMetrics: mutable.Map[String, mutable.Map[Int, BrokerMetrics]] =
     new mutable.HashMap[String, mutable.Map[Int, BrokerMetrics]]()
 
+  // topic -> partitions -> brokers
+  private[this] val brokerTopicPartitionSizes: mutable.Map[String, mutable.Map[Int, mutable.Map[Int, Long]]] =
+    new mutable.HashMap[String, mutable.Map[Int, mutable.Map[Int, Long]]]()
+
   private[this] var combinedBrokerMetric : Option[BrokerMetrics] = None
 
   private[this] val EMPTY_BVVIEW = BVView(Map.empty, config.clusterConfig, Option(BrokerMetrics.DEFAULT))
@@ -141,6 +145,9 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       case BVGetTopicIdentities =>
         sender ! topicIdentities
 
+      case BVGetBrokerTopicPartitionSizes(topic) =>
+        sender ! brokerTopicPartitionSizes.get(topic)
+
       case BVUpdateTopicMetricsForBroker(id, metrics) =>
         metrics.foreach {
           case (topic, bm) =>
@@ -163,6 +170,16 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         }.getOrElse {
           Queue(messagesCount)
         })
+
+      case BVUpdateBrokerTopicPartitionSizes(id, logInfo) =>
+        for ((topic, partitions) <- logInfo) {
+          val tMap = brokerTopicPartitionSizes.getOrElse(topic, new mutable.HashMap[Int, mutable.Map[Int, Long]])
+          for ((partition, info) <- partitions; pMap = tMap.getOrElse(partition, new mutable.HashMap[Int, Long])) {
+            pMap.put(id, info.bytes)
+            tMap.put(partition, pMap)
+          }
+          brokerTopicPartitionSizes.put(topic, tMap)
+        }
 
       case any: Any => log.warning("bvca : processActorRequest : Received unknown message: {}", any)
     }
@@ -189,19 +206,21 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       brokerList <- brokerListOption
       topicDescriptions <- topicDescriptionsOption
     } {
-      val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(
-        TopicIdentity.from(brokerList.list.size,_,None, config.clusterConfig))
+      val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map{
+        td =>
+          val tpm = brokerTopicPartitionSizes.get(td.topic).asInstanceOf[Option[Map[Int, Map[Int, Long]]]]
+          TopicIdentity.from(brokerList.list.size, td, None, tpm, config.clusterConfig)
+      }
       topicIdentities = topicIdentity.map(ti => (ti.topic, ti)).toMap
       val topicPartitionByBroker = topicIdentity.flatMap(
         ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
-      //check for 2*broker list size since we schedule 2 jmx calls for each broker
+      //check for 3*broker list size since we schedule 3 jmx calls for each broker
       if (config.clusterConfig.jmxEnabled && hasCapacityFor(2*brokerListOption.size)) {
         implicit val ec = longRunningExecutionContext
-
         updateTopicMetrics(brokerList, topicPartitionByBroker)
         updateBrokerMetrics(brokerList)
-
+        updateBrokerTopicPartitionsSize(brokerList)
       } else if(config.clusterConfig.jmxEnabled) {
         log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
       }
@@ -270,6 +289,28 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
               case scala.util.Success(bm) => bm
             }
             self.tell(BVUpdateBrokerMetrics(broker.id, result), ActorRef.noSender)
+          }
+        }
+    }
+  }
+
+  private def updateBrokerTopicPartitionsSize(brokerList: BrokerList)(implicit ec: ExecutionContext): Unit = {
+    brokerList.list.foreach {
+      broker =>
+        longRunning {
+          Future {
+            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+              mbsc =>
+                KafkaMetrics.getLogSegmentsInfo(mbsc)
+            }
+
+            val result = tryResult match {
+              case scala.util.Failure(t) =>
+                log.error(t, s"Failed to get broker topic segment metrics for $broker")
+                Map[String, Map[Int, LogInfo]]()
+              case scala.util.Success(segmentInfo) => segmentInfo
+            }
+            self.tell(BVUpdateBrokerTopicPartitionSizes(broker.id, result), ActorRef.noSender)
           }
         }
     }
