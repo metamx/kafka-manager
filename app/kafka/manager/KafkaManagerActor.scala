@@ -123,6 +123,7 @@ object ClusterConfig {
       :: ("enabled" -> toJSON(config.enabled))
       :: ("kafkaVersion" -> toJSON(config.version.toString))
       :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
+      :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -545,7 +546,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
       if(newConfig.curatorConfig.zkConnect == currentConfig.curatorConfig.zkConnect
         && newConfig.enabled == currentConfig.enabled
         && newConfig.version == currentConfig.version
-        && newConfig.jmxEnabled == currentConfig.jmxEnabled) {
+        && newConfig.jmxEnabled == currentConfig.jmxEnabled
+        && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled) {
         //nothing changed
         false
       } else {

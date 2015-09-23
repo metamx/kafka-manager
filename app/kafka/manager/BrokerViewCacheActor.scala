@@ -216,12 +216,16 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
       //check for 3*broker list size since we schedule 3 jmx calls for each broker
-      if (config.clusterConfig.jmxEnabled && hasCapacityFor(2*brokerListOption.size)) {
+      if (config.clusterConfig.jmxEnabled && config.clusterConfig.displaySizeEnabled && hasCapacityFor(3*brokerListOption.size)) {
+        implicit val ec = longRunningExecutionContext
+        updateTopicMetrics(brokerList, topicPartitionByBroker, shouldGetBrokerSize = true)
+        updateBrokerMetrics(brokerList, shouldGetBrokerSize = true)
+        updateBrokerTopicPartitionsSize(brokerList)
+      } else if (config.clusterConfig.jmxEnabled && hasCapacityFor(2*brokerListOption.size)) {
         implicit val ec = longRunningExecutionContext
         updateTopicMetrics(brokerList, topicPartitionByBroker)
         updateBrokerMetrics(brokerList)
-        updateBrokerTopicPartitionsSize(brokerList)
-      } else if(config.clusterConfig.jmxEnabled) {
+      } else if (config.clusterConfig.jmxEnabled) {
         log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
       }
 
@@ -238,7 +242,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   }
 
   private def updateTopicMetrics(brokerList: BrokerList,
-                                 topicPartitionByBroker: Map[Int, IndexedSeq[(TopicIdentity, Int, IndexedSeq[Int])]]
+                                 topicPartitionByBroker: Map[Int, IndexedSeq[(TopicIdentity, Int, IndexedSeq[Int])]],
+                                 shouldGetBrokerSize: Boolean = false
                                 )(implicit ec: ExecutionContext): Unit = {
     val brokerLookup = brokerList.list.map(bi => bi.id -> bi).toMap
     topicPartitionByBroker.foreach {
@@ -253,7 +258,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                     topicPartitions.map {
                       case (topic, id, partitions) =>
                         (topic.topic,
-                          KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc, Option(topic.topic)))
+                          KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc, shouldGetBrokerSize, Option(topic.topic)))
                     }
                 }
                 val result = tryResult match {
@@ -272,14 +277,14 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     }
   }
 
-  private def updateBrokerMetrics(brokerList: BrokerList)(implicit ec: ExecutionContext): Unit = {
+  private def updateBrokerMetrics(brokerList: BrokerList, shouldGetBrokerSize: Boolean = false)(implicit ec: ExecutionContext): Unit = {
     brokerList.list.foreach {
       broker =>
         longRunning {
           Future {
             val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
               mbsc =>
-                KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc)
+                KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc, shouldGetBrokerSize)
             }
 
             val result = tryResult match {
