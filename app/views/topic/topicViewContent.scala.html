@@ -119,10 +119,12 @@
                             @topicIdentity.underReplicatedPercentage
                         </td>
                     </tr>
+                    @if(topicIdentity.clusterConfig.jmxEnabled && topicIdentity.clusterConfig.displaySizeEnabled){
                     <tr>
                         <td>Leader Size</td>
                         <td>@topicIdentity.size</td>
                     </tr>
+                    }
                     </tbody>
                 </table>
                 @if(!topicIdentity.config.isEmpty) {
@@ -221,7 +223,9 @@
                         <th>In Sync Replicas</th>
                         <th>Preferred Leader?</th>
                         <th>Under Replicated?</th>
+                        @if(topicIdentity.clusterConfig.jmxEnabled && topicIdentity.clusterConfig.displaySizeEnabled){
                         <th>Leader Size</th>
+                        }
                     </tr>
                     </thead>
                     <tbody>
@@ -239,7 +243,9 @@
                         <td class="@getIsUnderReplicatedLevel(tpi.isUnderReplicated)">
                             @tpi.isUnderReplicated
                         </td>
+                        @if(topicIdentity.clusterConfig.jmxEnabled && topicIdentity.clusterConfig.displaySizeEnabled){
                         <td>@tpi.size</td>
+                        }
                     </tr>
                     }
                     </tbody>
