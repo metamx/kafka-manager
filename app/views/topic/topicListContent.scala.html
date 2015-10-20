@@ -39,6 +39,19 @@
     @if(topicsUnderReassignment.contains(topic)) {glow-red} else {}
 }
 
+@isJmxEnabled(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
+    @topicIdentity.map{ ti => ti.clusterConfig.jmxEnabled }
+}
+
+@isDisplaySizeEnabled(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
+    @topicIdentity.map{ ti => ti.clusterConfig.displaySizeEnabled }
+}
+
+@shouldDisplaySize(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
+    @(topicIdentity.map{ ti => ti.clusterConfig.displaySizeEnabled }.getOrElse(false) && topicIdentity.map{ ti => ti.clusterConfig.jmxEnabled }.getOrElse(false))
+}
+
+
 <table class="table" id="topics-table">
     <thead>
     <tr>
@@ -49,7 +62,9 @@
         <th>Brokers Skew %</th>
         <th># Replicas</th>
         <th>Under Replicated %</th>
+        @if(shouldDisplaySize(topics.head._1._2)){
         <th>Leader Size</th>
+        }
     </tr>
     </thead>
     <tbody>
@@ -62,7 +77,9 @@
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
+          @if(shouldDisplaySize(topicIdentity)){
           @topicIdentity.map{ ti => <td>@ti.size</td>}.getOrElse{<td> </td>}
+          }
       </tr>
     }
     </tbody>

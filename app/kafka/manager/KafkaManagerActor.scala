@@ -375,6 +375,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(kafkaManagerPathCache.getCurrentData(zkpath) == null,
             s"Cluster already exists : ${clusterConfig.name}")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
@@ -387,6 +389,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
             s"Cluster is marked for deletion : ${clusterConfig.name}")
           require(kafkaManagerPathCache.getCurrentData(zkpath) != null,
