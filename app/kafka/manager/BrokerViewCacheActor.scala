@@ -156,7 +156,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         sender ! consumerIdentities
 
       case BVGetBrokerTopicPartitionSizes(topic) =>
-        sender ! brokerTopicPartitionSizes.get(topic)
+        sender ! brokerTopicPartitionSizes.get(topic).map(m => m.map{case (k,v) => (k, v.toMap)}.toMap)
 
       case BVUpdateTopicMetricsForBroker(id, metrics) =>
         metrics.foreach {
@@ -230,7 +230,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     } {
       val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map {
         tdCurrent =>
-          val tpm = brokerTopicPartitionSizes.get(tdCurrent.topic).asInstanceOf[Option[Map[Int, Map[Int, Long]]]]
+          val tpm = brokerTopicPartitionSizes.get(tdCurrent.topic).map(m => m.map{case (k,v) => (k, v.toMap)}.toMap)
           TopicIdentity.from(brokerList.list.size, tdCurrent, None, tpm, config.clusterContext, previousDescriptionsMap.flatMap(_.get(tdCurrent.topic)))
         
       }
