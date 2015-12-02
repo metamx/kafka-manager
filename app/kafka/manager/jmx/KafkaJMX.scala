@@ -3,27 +3,23 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.jmx
 
 import java.io.File
 import java.{util => ju}
-
 import javax.management._
 import javax.management.remote.{JMXConnectorFactory, JMXServiceURL}
 
+import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
+import grizzled.slf4j.Logging
+import kafka.manager.model.{Kafka_0_8_1_1, KafkaVersion, ActorModel}
+import ActorModel.BrokerMetrics
+
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
-
-import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
-import kafka.manager.ActorModel.BrokerMetrics
-import org.slf4j.LoggerFactory
-
 import scala.util.{Failure, Try}
-import scala.math
 
-object KafkaJMX {
-  
-  private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
+object KafkaJMX extends Logging {
   
   private[this] val jmxConnectorProperties : java.util.Map[String, _] = {
     import scala.collection.JavaConverters._
