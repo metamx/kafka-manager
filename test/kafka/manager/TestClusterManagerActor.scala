@@ -36,10 +36,13 @@ class TestClusterManagerActor extends CuratorAwareTest {
   private[this] var clusterManagerActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
   private[this] val createTopicName = "cm-unit-test"
+  private[this] val createLogkafkaLogkafkaId = "km-unit-test-logkafka-logkafka_id"
+  private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
+  private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, displaySizeEnabled = false)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true)
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = ClusterManagerActorConfig("pinned-dispatcher","/kafka-manager/clusters/dev",curatorConfig,clusterConfig,FiniteDuration(1,SECONDS))
     val props = Props(classOf[ClusterManagerActor],config)
@@ -115,7 +118,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
       descriptions foreach println
 
       withClusterManagerActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, None, brokerList.clusterConfig))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList, td, None, None, brokerList.clusterContext, None))
         topicIdentityList foreach println
       }
     }
@@ -238,6 +241,56 @@ class TestClusterManagerActor extends CuratorAwareTest {
     Thread.sleep(3000)
     withClusterManagerActor(KSGetTopics) { result: TopicList =>
       assert(!result.list.contains(createTopicName),"Failed to delete topic")
+    }
+  }
+
+  test("create logkafka") {
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    withClusterManagerActor(CMCreateLogkafka(createLogkafkaLogkafkaId,createLogkafkaLogPath,config)) { cmResultFuture: Future[CMCommandResult] =>
+      val cmResult = Await.result(cmResultFuture,10 seconds)
+      if(cmResult.result.isFailure) {
+        cmResult.result.get
+      }
+      Thread.sleep(500)
+    }
+
+    withClusterManagerActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      assert(result.list.contains(createLogkafkaLogkafkaId),"Failed to create logkafka")
+    }
+
+    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaLogkafkaId)) { result: Option[CMLogkafkaIdentity] =>
+      assert(result.get.logkafkaIdentity.get.identityMap.contains(createLogkafkaLogPath),"Failed to create logkafka")
+    }
+  }
+
+  test("get logkafka logkafka id list") {
+    withClusterManagerActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      assert(result.list.nonEmpty,"Failed to get logkafka logkafka_id list")
+      result.list foreach println
+    }
+  }
+
+  test("get logkafka config") {
+    withClusterManagerActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      val configs = result.list map { logkafka_id =>
+        withClusterManagerActor(LKSGetLogkafkaConfig(logkafka_id)) { logkafkaConfigOption: Option[LogkafkaConfig] => logkafkaConfigOption.get }
+      }
+      configs foreach println
+    }
+  }
+
+  test("delete logkafka") {
+    withClusterManagerActor(CMDeleteLogkafka(createLogkafkaLogkafkaId,createLogkafkaLogPath)) { cmResultFuture: Future[CMCommandResult] =>
+      val cmResult = Await.result(cmResultFuture,10 seconds)
+      if(cmResult.result.isFailure) {
+        cmResult.result.get
+      }
+      Thread.sleep(500)
+    }
+
+    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaLogkafkaId)) { result: Option[CMLogkafkaIdentity] =>
+      assert(!result.get.logkafkaIdentity.get.identityMap.contains(createLogkafkaLogPath),"Failed to delete logkafka")
     }
   }
 }
