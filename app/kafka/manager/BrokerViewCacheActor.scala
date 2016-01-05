@@ -262,6 +262,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         implicit val ec = longRunningExecutionContext
         updateTopicMetrics(brokerList, topicPartitionByBroker)
         updateBrokerMetrics(brokerList)
+        log.warning("Not scheduling update of topic sizes for all brokers, not enough capacity!")
       } else if(config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature)) {
         log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
       }
