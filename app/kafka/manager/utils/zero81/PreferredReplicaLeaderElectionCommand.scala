@@ -70,7 +70,8 @@ object PreferredReplicaLeaderElectionCommand {
 }
 
 object PreferredLeaderElectionErrors {
-  class ElectionSetEmptyOnWrite private[PreferredLeaderElectionErrors] extends UtilError("Preferred replica election data is empty")
+  class ElectionSetEmptyOnWrite private[PreferredLeaderElectionErrors] extends UtilError(
+    "Preferred replica election data is empty. There are no partitions of which preferred replica is not already a leader.")
   class ElectionSetEmptyOnRead private[PreferredLeaderElectionErrors] (json: String) extends UtilError(s"Preferred replica election data is empty on read : $json")
   class ElectionAlreadyInProgress private[PreferredLeaderElectionErrors] (partitionsUndergoingPreferredReplicaElection: Set[TopicAndPartition]) extends UtilError(
     "Preferred replica leader election currently in progress for " +
