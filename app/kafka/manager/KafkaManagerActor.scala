@@ -402,10 +402,13 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   override def processQueryRequest(request: QueryRequest): Unit = {
     request match {
       case KMGetActiveClusters =>
-        sender ! KMQueryResult(clusterConfigMap.values.filter(_.enabled).toIndexedSeq)
+        sender ! KMQueryResult(clusterConfigMap.values.filter(_.enabled).toIndexedSeq.sortBy(_.name))
 
       case KMGetAllClusters =>
-        sender ! KMClusterList(clusterConfigMap.values.toIndexedSeq, pendingClusterConfigMap.values.toIndexedSeq)
+        sender ! KMClusterList(
+          clusterConfigMap.values.toIndexedSeq.sortBy(_.name),
+          pendingClusterConfigMap.values.toIndexedSeq.sortBy(_.name)
+        )
 
       case KMGetClusterConfig(name) =>
         sender ! KMClusterConfigResult(Try {
